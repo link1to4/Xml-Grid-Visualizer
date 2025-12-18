@@ -1,0 +1,5 @@
+{
+  "name": "XML Grid Visualizer",
+  "description": "A powerful XML editor and visualizer that converts raw XML into an interactive, navigable grid view, replicating the core experience of xmlgrid.net.",
+  "requestFramePermissions": []
+}
