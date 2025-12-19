@@ -49,6 +49,14 @@ const getIndexedPath = (basePath: string, tagName: string, index: number, total:
   return `${basePath}/${tagName}`;
 };
 
+// --- Custom Logo Component ---
+const AppLogo = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className="w-8 h-8 shrink-0">
+    <rect x="0" y="0" width="64" height="64" rx="12" fill="#005b96"/>
+    <text x="50%" y="53%" fontFamily="monospace" fontWeight="bold" fontSize="36" fill="white" textAnchor="middle" dominantBaseline="central">&lt;/&gt;</text>
+  </svg>
+);
+
 // --- Table View Component for Repeated Nodes ---
 interface NodeTableProps {
   nodes: XMLNode[];
@@ -538,9 +546,9 @@ const App: React.FC = () => {
       <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-900 overflow-hidden">
         
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm flex items-center justify-between shrink-0 z-10 h-[50px]">
-          <div className="flex items-center space-x-2 text-blue-700">
-            <Code className="w-6 h-6" />
+        <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm flex items-center justify-between shrink-0 z-10 h-[56px]">
+          <div className="flex items-center space-x-3 text-blue-700">
+            <AppLogo />
             <h1 className="text-xl font-bold tracking-tight">XML Grid Visualizer</h1>
           </div>
           <div className="text-sm text-gray-500 hidden sm:block">
