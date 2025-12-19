@@ -11,7 +11,12 @@ export const parseXML = (xmlString: string): ParseResult => {
   // Remove XML declaration (<?xml ... ?>) if present.
   // This is necessary because we wrap the content in a dummy root <__root__>,
   // and the XML declaration must appear at the very start of the document, not inside an element.
-  const sanitizedXml = xmlString.replace(/^\s*<\?xml[^>]*\?>/i, '');
+  let sanitizedXml = xmlString.replace(/^\s*<\?xml[^>]*\?>/i, '');
+
+  // Remove DOCTYPE declaration (<!DOCTYPE ... >) if present.
+  // DOCTYPEs are not allowed inside the dummy root wrapper.
+  // This regex handles basic DOCTYPE declarations.
+  sanitizedXml = sanitizedXml.replace(/^\s*<!DOCTYPE[^>]*>/i, '');
 
   const parser = new DOMParser();
   // Wrap in a dummy root to handle fragments (multiple top-level nodes) safely.
