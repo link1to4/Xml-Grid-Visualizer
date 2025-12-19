@@ -1,20 +1,78 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# XML Grid Visualizer
 
-# Run and deploy your AI Studio app
+**XML Grid Visualizer** 是一個強大的網頁應用程式，旨在將複雜、難以閱讀的原始 XML 代碼轉換為互動式、結構化的網格視圖。這個工具的靈感來自於 xmlgrid.net，使用現代化的前端技術棧構建，提供更流暢的用戶體驗。
 
-This contains everything you need to run your app locally.
+## ✨ 主要功能 (Features)
 
-View your app in AI Studio: https://ai.studio/apps/drive/1qf09UitOX-82h6nS1vDYyPuBwHezgB8P
+*   **視覺化網格視圖 (Grid View)**：將 XML 節點轉換為巢狀的網格，層次分明，易於閱讀。
+*   **智能表格模式 (Smart Table)**：自動偵測重複的子節點（例如列表數據），並將其轉換為整齊的表格佈局。
+*   **互動式導航**：
+    *   **展開/收合**：可自由控制每個節點的顯示狀態。
+    *   **一鍵遞迴展開**：點擊節點標題旁的雙箭頭圖示，即可一次展開該節點下的所有子層級。
+    *   **全域控制**：支援「全部展開」與「全部收合」。
+*   **XPath 支援**：雙擊任何屬性或內容值，即可自動複製該位置的絕對 XPath 到剪貼簿。
+*   **強大的編輯器**：
+    *   支援語法高亮。
+    *   支援 XML 格式化 (Prettify)。
+    *   支援 XML 驗證與錯誤提示。
+*   **拖放支援**：直接將 XML 檔案拖曳至視窗中即可載入。
+*   **可調整介面**：可透過拖曳分隔線調整原始碼編輯器與視覺化視圖的比例。
 
-## Run Locally
+## 🛠️ 技術堆疊 (Tech Stack)
 
-**Prerequisites:**  Node.js
+本專案使用以下技術構建：
 
+*   **核心框架**: [React](https://react.dev/) (v19)
+*   **語言**: [TypeScript](https://www.typescriptlang.org/)
+*   **建置工具**: [Vite](https://vitejs.dev/)
+*   **樣式**: [Tailwind CSS](https://tailwindcss.com/)
+*   **圖示庫**: [Lucide React](https://lucide.dev/)
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🚀 安裝與執行 (Installation)
+
+請確保您的電腦已安裝 [Node.js](https://nodejs.org/) (建議 v16 或更高版本)。
+
+### 1. 取得專案
+
+下載或複製此專案到您的本地目錄。
+
+### 2. 安裝依賴
+
+在專案根目錄下開啟終端機，執行以下指令安裝所需的套件：
+
+```bash
+npm install
+```
+
+### 3. 啟動開發伺服器
+
+執行以下指令啟動本地開發環境：
+
+```bash
+npm run dev
+```
+
+啟動後，瀏覽器通常會自動開啟 `http://localhost:5173` (或終端機顯示的其他連接埠)。
+
+### 4. 建置生產版本 (Build)
+
+若要部署到生產環境，請執行：
+
+```bash
+npm run build
+```
+
+建置完成的檔案將位於 `dist` 目錄中。
+
+## 📖 使用說明
+
+1.  **輸入 XML**：在上方編輯器貼上 XML 字串，或點擊「Load Sample」載入範例資料。
+2.  **解析**：點擊「Submit」按鈕，下方將顯示解析後的網格視圖。
+3.  **瀏覽**：
+    *   點擊標題列可展開/收合單一節點。
+    *   點擊標題旁的 **雙箭頭圖示** 可展開該節點下所有內容。
+4.  **複製 XPath**：在網格中的任意數值上連點兩下 (Double Click)，即可複製該數值的 XPath。
+
+## 📝 License
+
+此專案僅供學習與開發使用。
