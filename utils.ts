@@ -99,40 +99,24 @@ export const prettifyXML = (xml: string): string => {
   return formatted.substring(1, formatted.length-3);
 };
 
-export const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<Pip3B12ShippingOrderRequest>
-  <fromRole>
-    <PartnerRoleDescription>
-      <GlobalPartnerRoleClassificationCode>Shipper</GlobalPartnerRoleClassificationCode>
-      <PartnerDescription>
-        <BusinessDescription>
-          <GlobalBusinessIdentifier>038142600</GlobalBusinessIdentifier>
-          <GlobalSupplyChainCode>Semiconductor Manufacturing</GlobalSupplyChainCode>
-          <businessName>
-            <FreeFormText>RENESAS ELECTRONICS AMERICA INC.</FreeFormText>
-          </businessName>
-        </BusinessDescription>
-        <GlobalPartnerClassificationCode>Manufacturer</GlobalPartnerClassificationCode>
-      </PartnerDescription>
-    </PartnerRoleDescription>
-  </fromRole>
-  <GlobalDocumentFunctionCode>Request</GlobalDocumentFunctionCode>
-  <thisDocumentIdentifier>
-    <ProprietaryDocumentIdentifier>8000008528</ProprietaryDocumentIdentifier>
-  </thisDocumentIdentifier>
-  <toRole>
-    <PartnerRoleDescription>
-      <GlobalPartnerRoleClassificationCode>Shipping Provider</GlobalPartnerRoleClassificationCode>
-      <PartnerDescription>
-        <BusinessDescription>
-          <GlobalBusinessIdentifier>656132354</GlobalBusinessIdentifier>
-          <GlobalSupplyChainCode>Semiconductor Manufacturing</GlobalSupplyChainCode>
-          <businessName>
-            <FreeFormText>Siliconware Precision Ind. Co.Ltd</FreeFormText>
-          </businessName>
-        </BusinessDescription>
-        <GlobalPartnerClassificationCode>Contract Manufacturer</GlobalPartnerClassificationCode>
-      </PartnerDescription>
-    </PartnerRoleDescription>
-  </toRole>
-</Pip3B12ShippingOrderRequest>`;
+export const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bookstore>
+  <book category="cooking">
+    <title lang="en">Everyday Italian</title>
+    <author>Giada De Laurentiis</author>
+    <year>2005</year>
+    <price>30.00</price>
+  </book>
+  <book category="children">
+    <title lang="en">Harry Potter</title>
+    <author>J.K. Rowling</author>
+    <year>2005</year>
+    <price>29.99</price>
+  </book>
+  <book category="web">
+    <title lang="en">Learning XML</title>
+    <author>Erik Ray</author>
+    <year>2003</year>
+    <price>39.95</price>
+  </book>
+</bookstore>`;
