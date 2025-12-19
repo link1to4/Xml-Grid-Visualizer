@@ -12,20 +12,28 @@ import {
   Upload,
   Maximize2,
   Minimize2,
-  CheckCircle2
+  CheckCircle2,
+  GripHorizontal,
+  ChevronsDown
 } from 'lucide-react';
 import { parseXML, prettifyXML, SAMPLE_XML } from './utils';
 import { XMLNode, XMLAttribute } from './types';
 
 // --- Context for Global Actions ---
-type ViewAction = { type: 'EXPAND_ALL' | 'COLLAPSE_ALL'; id: number };
+// Updated to support path-specific expansion
+type ViewAction = 
+  | { type: 'EXPAND_ALL'; id: number } 
+  | { type: 'COLLAPSE_ALL'; id: number }
+  | { type: 'EXPAND_PATH'; path: string; id: number };
 
 const GridContext = React.createContext<{
   viewAction: ViewAction | null;
   onCopyXPath: (path: string) => void;
+  onExpandPath: (path: string) => void;
 }>({
   viewAction: null,
   onCopyXPath: () => {},
+  onExpandPath: () => {},
 });
 
 // --- Helper Types for Grouping ---
@@ -34,11 +42,7 @@ interface GroupedNodes {
 }
 
 // --- Helper for XPath Indexing ---
-// XPath uses 1-based indexing (e.g., Node[1])
 const getIndexedPath = (basePath: string, tagName: string, index: number, total: number) => {
-  // Always use index if strictly following XPath for repeatable elements, 
-  // but usually cleaner to omit [1] if it's the only one. 
-  // However, for strict arrays in grid view, explicit indexing is safer.
   if (total > 1) {
     return `${basePath}/${tagName}[${index + 1}]`;
   }
@@ -50,21 +54,32 @@ interface NodeTableProps {
   nodes: XMLNode[];
   tagName: string;
   parentPath: string;
+  depth: number;
 }
 
-const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath }) => {
+const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth }) => {
   const { viewAction, onCopyXPath } = useContext(GridContext);
   
   const [isExpanded, setIsExpanded] = useState(() => {
     if (viewAction?.type === 'COLLAPSE_ALL') return false;
-    return true; 
+    if (viewAction?.type === 'EXPAND_ALL') return true;
+    return depth < 1; 
   });
 
   useEffect(() => {
     if (!viewAction) return;
     if (viewAction.type === 'EXPAND_ALL') setIsExpanded(true);
     if (viewAction.type === 'COLLAPSE_ALL') setIsExpanded(false);
-  }, [viewAction]);
+    
+    // Check if this table is inside the target path being expanded recursively
+    // A table logically belongs to the parent path.
+    if (viewAction.type === 'EXPAND_PATH') {
+      // If the parent path starts with the expanded path, we are inside the subtree
+      if (parentPath.startsWith(viewAction.path)) {
+        setIsExpanded(true);
+      }
+    }
+  }, [viewAction, parentPath]);
 
   const columns = useMemo(() => {
     const attrKeys = new Set<string>();
@@ -126,13 +141,10 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath }) => 
             </thead>
             <tbody>
               {nodes.map((node, nodeIndex) => {
-                // Determine path for this row (Node instance)
-                // If this table represents 'Item', and we are on row 0, path is .../Item[1]
                 const rowPath = `${parentPath}/${tagName}[${nodeIndex + 1}]`;
 
                 return (
                   <tr key={node.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
-                    {/* Attribute Cells */}
                     {columns.attributes.map(attrKey => {
                       const attr = node.attributes.find(a => a.name === attrKey);
                       const attrPath = `${rowPath}/@${attrKey}`;
@@ -148,7 +160,6 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath }) => 
                       );
                     })}
                     
-                    {/* Child Node Cells */}
                     {columns.children.map(childKey => {
                       const matches = node.children.filter(c => c.name === childKey);
                       
@@ -161,7 +172,6 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath }) => 
                               {matches.map((match, matchIdx) => {
                                   const isLeaf = match.children.length === 0 && match.attributes.length === 0 && match.content !== null;
                                   
-                                  // Determine path for this specific child instance
                                   const childPath = matches.length > 1 
                                     ? `${rowPath}/${childKey}[${matchIdx + 1}]` 
                                     : `${rowPath}/${childKey}`;
@@ -205,21 +215,29 @@ interface GridNodeProps {
 }
 
 const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
-  const { viewAction, onCopyXPath } = useContext(GridContext);
+  const { viewAction, onCopyXPath, onExpandPath } = useContext(GridContext);
   
-  // Calculate current node path if not provided (only for root usually)
   const currentPath = path || `/${node.name}`;
 
   const [isExpanded, setIsExpanded] = useState(() => {
     if (viewAction?.type === 'COLLAPSE_ALL') return false;
-    return true;
+    if (viewAction?.type === 'EXPAND_ALL') return true;
+    return depth < 1;
   });
 
   useEffect(() => {
     if (!viewAction) return;
     if (viewAction.type === 'EXPAND_ALL') setIsExpanded(true);
     if (viewAction.type === 'COLLAPSE_ALL') setIsExpanded(false);
-  }, [viewAction]);
+    
+    // If the view action is EXPAND_PATH, check if this node is part of that subtree
+    // We expand if our path starts with the target path
+    if (viewAction.type === 'EXPAND_PATH') {
+      if (currentPath.startsWith(viewAction.path)) {
+        setIsExpanded(true);
+      }
+    }
+  }, [viewAction, currentPath]);
 
   const headerColors = [
     'bg-blue-600',
@@ -234,6 +252,11 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
   const toggleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsExpanded(!isExpanded);
+  };
+
+  const handleRecursiveExpand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onExpandPath(currentPath);
   };
 
   const handleValueDoubleClick = (e: React.MouseEvent, targetPath: string) => {
@@ -261,13 +284,26 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
       {/* Node Header */}
       <div 
         onClick={toggleExpand}
-        className={`${headerColor} text-white px-2 py-1 flex items-center cursor-pointer select-none whitespace-nowrap overflow-hidden`}
+        className={`${headerColor} text-white px-2 py-1 flex items-center cursor-pointer select-none overflow-hidden group`}
         title={`XPath: ${currentPath}`}
       >
-        <span className="mr-1">
-          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </span>
-        <span className="font-bold tracking-wide">{node.name}</span>
+        <div className="flex items-center whitespace-nowrap overflow-hidden">
+          <span className="mr-1">
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+          <span className="font-bold tracking-wide">{node.name}</span>
+          
+          {/* Recursive Expand Button - Only show if has children */}
+          {hasChildren && (
+            <button 
+              onClick={handleRecursiveExpand}
+              className="ml-2 p-0.5 rounded hover:bg-white/20 text-white/70 hover:text-white transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0"
+              title="Expand all children recursively"
+            >
+              <ChevronsDown size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Node Body */}
@@ -320,7 +356,6 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
                   {Object.keys(groupedChildren).map(tagName => {
                     const group = groupedChildren[tagName];
                     
-                    // If group has more than 1 item, render as Table (Grid View)
                     if (group.length > 1) {
                       return (
                         <NodeTable 
@@ -328,11 +363,11 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
                           nodes={group} 
                           tagName={tagName} 
                           parentPath={currentPath}
+                          depth={depth + 1}
                         />
                       );
                     }
                     
-                    // Otherwise, render standard recursive node
                     return (
                       <GridNode 
                         key={group[0].id} 
@@ -363,21 +398,50 @@ const App: React.FC = () => {
   const [inputXml, setInputXml] = useState<string>('');
   const [parsedData, setParsedData] = useState<XMLNode | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isCopied, setIsCopied] = useState(false); // For source editor
-  
-  // XPath Copy Feedback
+  const [isCopied, setIsCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  
-  // Drag & Drop State
   const [isDragging, setIsDragging] = useState(false);
-
-  // Global View Action State
   const [viewAction, setViewAction] = useState<ViewAction | null>(null);
 
+  // --- Resizable Panel State ---
+  const [topPanelHeight, setTopPanelHeight] = useState(35); // Percentage
+  const isResizing = useRef(false);
+
+  // --- Resizing Logic ---
   useEffect(() => {
-    handleLoadSample();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      
+      // Calculate percentage based on window height
+      // Subtract header height approximation (e.g. 50px) if strictly needed, but simple ratio works fine here
+      const newHeight = (e.clientY / window.innerHeight) * 100;
+      
+      // Limit min/max size (e.g., 10% to 90%)
+      if (newHeight > 10 && newHeight < 90) {
+        setTopPanelHeight(newHeight);
+      }
+    };
+
+    const handleMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
   }, []);
+
+  const startResizing = () => {
+    isResizing.current = true;
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputXml(e.target.value);
@@ -419,12 +483,15 @@ const App: React.FC = () => {
     });
   };
 
-  // Handler for deep nodes to trigger copy
   const handleCopyXPath = useCallback((path: string) => {
     navigator.clipboard.writeText(path).then(() => {
       setToastMessage(`XPath copied: ${path}`);
       setTimeout(() => setToastMessage(null), 3000);
     });
+  }, []);
+  
+  const handleExpandPath = useCallback((path: string) => {
+    setViewAction({ type: 'EXPAND_PATH', path, id: Date.now() });
   }, []);
 
   const handleLoadSample = () => {
@@ -467,11 +534,11 @@ const App: React.FC = () => {
   const handleCollapseAll = () => setViewAction({ type: 'COLLAPSE_ALL', id: Date.now() });
 
   return (
-    <GridContext.Provider value={{ viewAction, onCopyXPath: handleCopyXPath }}>
+    <GridContext.Provider value={{ viewAction, onCopyXPath: handleCopyXPath, onExpandPath: handleExpandPath }}>
       <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-900 overflow-hidden">
         
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm flex items-center justify-between shrink-0 z-10">
+        <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm flex items-center justify-between shrink-0 z-10 h-[50px]">
           <div className="flex items-center space-x-2 text-blue-700">
             <Code className="w-6 h-6" />
             <h1 className="text-xl font-bold tracking-tight">XML Grid Visualizer</h1>
@@ -484,9 +551,12 @@ const App: React.FC = () => {
         {/* Main Content Split */}
         <main className="flex-1 flex flex-col overflow-hidden relative">
           
-          {/* Source Editor */}
-          <section className="w-full h-[35%] flex flex-col border-b border-gray-300 bg-white shrink-0 relative">
-            <div className="bg-gray-100 border-b border-gray-200 p-2 flex flex-wrap gap-2 items-center justify-between">
+          {/* Source Editor - Resizable */}
+          <section 
+            style={{ height: `${topPanelHeight}%` }}
+            className="w-full flex flex-col border-b border-gray-300 bg-white shrink-0 relative min-h-[50px]"
+          >
+            <div className="bg-gray-100 border-b border-gray-200 p-2 flex flex-wrap gap-2 items-center justify-between shrink-0">
               <div className="flex gap-2">
                 <button 
                   onClick={handleParse}
@@ -527,7 +597,7 @@ const App: React.FC = () => {
             </div>
 
             <div 
-              className="flex-1 relative"
+              className="flex-1 relative overflow-hidden"
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -561,8 +631,17 @@ const App: React.FC = () => {
             </div>
           </section>
 
-          {/* Grid View */}
-          <section className="w-full h-[65%] bg-gray-100 overflow-hidden flex flex-col relative">
+          {/* Resizer Handle */}
+          <div 
+            className="h-2 bg-gray-100 hover:bg-blue-500 cursor-row-resize flex items-center justify-center transition-colors z-20 shrink-0 border-y border-gray-300"
+            onMouseDown={startResizing}
+            title="Drag to resize"
+          >
+             <GripHorizontal className="w-8 h-4 text-gray-400 opacity-50 pointer-events-none" />
+          </div>
+
+          {/* Grid View - Takes remaining space */}
+          <section className="flex-1 bg-gray-100 overflow-hidden flex flex-col relative min-h-[50px]">
             
             <div className="bg-gray-50 border-b border-gray-200 p-2 px-4 flex items-center justify-between shrink-0">
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
