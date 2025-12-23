@@ -115,7 +115,7 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
   };
 
   return (
-    <div className="border border-gray-300 shadow-sm m-1 bg-white flex flex-col overflow-hidden">
+    <div className="border border-gray-300 shadow-sm m-1 bg-white flex flex-col overflow-hidden w-max">
       {/* Table Header */}
       <div 
         onClick={toggleExpand}
@@ -288,7 +288,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
   const hasContent = node.content !== null && node.content !== '';
 
   return (
-    <div className="border border-gray-300 shadow-sm m-1 min-w-[120px] bg-white text-sm overflow-hidden flex flex-col">
+    <div className="border border-gray-300 shadow-sm m-1 min-w-[120px] bg-white text-sm overflow-hidden flex flex-col w-max">
       {/* Node Header */}
       <div 
         onClick={toggleExpand}
@@ -345,7 +345,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
 
           {/* Children & Content Section */}
           <div className="p-1 overflow-x-auto custom-scrollbar">
-            <div className="flex flex-col gap-1 w-full items-start">
+            <div className="flex flex-col gap-1 w-max items-start">
               
               {/* Text Content */}
               {hasContent && (
@@ -360,7 +360,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
 
               {/* Render Grouped Children */}
               {hasChildren && (
-                <div className="flex flex-col gap-1 w-full">
+                <div className="flex flex-col gap-1 w-max">
                   {Object.keys(groupedChildren).map(tagName => {
                     const group = groupedChildren[tagName];
                     
@@ -675,7 +675,7 @@ const App: React.FC = () => {
 
             <div className="flex-1 overflow-auto p-4 custom-scrollbar relative">
               {parsedData ? (
-                <div className="inline-block min-w-full pb-10">
+                <div className="inline-block pb-10">
                   <GridNode node={parsedData} depth={0} />
                 </div>
               ) : (
