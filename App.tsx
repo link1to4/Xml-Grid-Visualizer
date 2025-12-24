@@ -14,26 +14,30 @@ import {
   Minimize2,
   CheckCircle2,
   GripHorizontal,
-  ChevronsDown
+  ChevronsDown,
+  ChevronsUp
 } from 'lucide-react';
 import { parseXML, prettifyXML, SAMPLE_XML } from './utils';
 import { XMLNode, XMLAttribute } from './types';
 
 // --- Context for Global Actions ---
-// Updated to support path-specific expansion
+// Updated to support path-specific expansion and collapse
 type ViewAction = 
   | { type: 'EXPAND_ALL'; id: number } 
   | { type: 'COLLAPSE_ALL'; id: number }
-  | { type: 'EXPAND_PATH'; path: string; id: number };
+  | { type: 'EXPAND_PATH'; path: string; id: number }
+  | { type: 'COLLAPSE_PATH'; path: string; id: number };
 
 const GridContext = React.createContext<{
   viewAction: ViewAction | null;
   onCopyXPath: (path: string) => void;
   onExpandPath: (path: string) => void;
+  onCollapsePath: (path: string) => void;
 }>({
   viewAction: null,
   onCopyXPath: () => {},
   onExpandPath: () => {},
+  onCollapsePath: () => {},
 });
 
 // --- Helper Types for Grouping ---
@@ -66,7 +70,8 @@ interface NodeTableProps {
 }
 
 const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth }) => {
-  const { viewAction, onCopyXPath } = useContext(GridContext);
+  const { viewAction, onCopyXPath, onExpandPath, onCollapsePath } = useContext(GridContext);
+  const tablePath = `${parentPath}/${tagName}`;
   
   const [isExpanded, setIsExpanded] = useState(() => {
     if (viewAction?.type === 'COLLAPSE_ALL') return false;
@@ -74,20 +79,40 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
     return depth < 1; 
   });
 
+  const [isRecursivelyExpanded, setIsRecursivelyExpanded] = useState(false);
+
   useEffect(() => {
     if (!viewAction) return;
-    if (viewAction.type === 'EXPAND_ALL') setIsExpanded(true);
-    if (viewAction.type === 'COLLAPSE_ALL') setIsExpanded(false);
+    if (viewAction.type === 'EXPAND_ALL') {
+      setIsExpanded(true);
+      setIsRecursivelyExpanded(true);
+    }
+    if (viewAction.type === 'COLLAPSE_ALL') {
+      setIsExpanded(false);
+      setIsRecursivelyExpanded(false);
+    }
     
     // Check if this table is inside the target path being expanded recursively
-    // A table logically belongs to the parent path.
     if (viewAction.type === 'EXPAND_PATH') {
-      // If the parent path starts with the expanded path, we are inside the subtree
-      if (parentPath.startsWith(viewAction.path)) {
+      if (tablePath.startsWith(viewAction.path)) {
         setIsExpanded(true);
+        // If we are the target of the expansion, mark as recursively expanded
+        if (tablePath === viewAction.path) setIsRecursivelyExpanded(true);
       }
     }
-  }, [viewAction, parentPath]);
+
+    if (viewAction.type === 'COLLAPSE_PATH') {
+      // If this table is a descendant of the collapsed path, collapse it
+      if (tablePath.startsWith(viewAction.path) && tablePath !== viewAction.path) {
+        setIsExpanded(false);
+      }
+      
+      // If this table is involved in the collapse path (either it is the target or a child), reset recursive state
+      if (tablePath.startsWith(viewAction.path)) {
+        setIsRecursivelyExpanded(false);
+      }
+    }
+  }, [viewAction, tablePath]);
 
   const columns = useMemo(() => {
     const attrKeys = new Set<string>();
@@ -109,6 +134,18 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
     setIsExpanded(!isExpanded);
   };
 
+  const handleRecursiveToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isRecursivelyExpanded) {
+      onCollapsePath(tablePath);
+      setIsRecursivelyExpanded(false);
+    } else {
+      setIsExpanded(true);
+      onExpandPath(tablePath);
+      setIsRecursivelyExpanded(true);
+    }
+  };
+
   const handleValueDoubleClick = (e: React.MouseEvent, path: string) => {
     e.stopPropagation();
     onCopyXPath(path);
@@ -119,7 +156,7 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
       {/* Table Header */}
       <div 
         onClick={toggleExpand}
-        className="bg-gray-100 border-b border-gray-300 px-2 py-1 flex items-center cursor-pointer select-none text-sm hover:bg-gray-200"
+        className="bg-gray-100 border-b border-gray-300 px-2 py-1 flex items-center cursor-pointer select-none text-sm hover:bg-gray-200 group"
       >
         <span className="mr-1 text-gray-600">
           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -127,6 +164,15 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
         <span className="font-bold text-gray-900 tracking-wide">
           {tagName} <span className="text-gray-500 font-normal">({nodes.length})</span>
         </span>
+        
+        {/* Recursive Expand/Collapse Button for Table */}
+        <button 
+          onClick={handleRecursiveToggle}
+          className={`ml-2 p-0.5 rounded hover:bg-gray-300 text-gray-400 hover:text-gray-700 transition-colors shrink-0 ${isRecursivelyExpanded ? 'opacity-100 text-blue-600' : 'opacity-0 group-hover:opacity-100'}`}
+          title={isRecursivelyExpanded ? "Collapse next level" : `Expand all ${tagName} items recursively`}
+        >
+          {isRecursivelyExpanded ? <ChevronsUp size={14} /> : <ChevronsDown size={14} />}
+        </button>
       </div>
 
       {/* Table Body */}
@@ -223,7 +269,7 @@ interface GridNodeProps {
 }
 
 const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
-  const { viewAction, onCopyXPath, onExpandPath } = useContext(GridContext);
+  const { viewAction, onCopyXPath, onExpandPath, onCollapsePath } = useContext(GridContext);
   
   const currentPath = path || `/${node.name}`;
 
@@ -233,16 +279,37 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
     return depth < 1;
   });
 
+  const [isRecursivelyExpanded, setIsRecursivelyExpanded] = useState(false);
+
   useEffect(() => {
     if (!viewAction) return;
-    if (viewAction.type === 'EXPAND_ALL') setIsExpanded(true);
-    if (viewAction.type === 'COLLAPSE_ALL') setIsExpanded(false);
+    if (viewAction.type === 'EXPAND_ALL') {
+      setIsExpanded(true);
+      setIsRecursivelyExpanded(true);
+    }
+    if (viewAction.type === 'COLLAPSE_ALL') {
+      setIsExpanded(false);
+      setIsRecursivelyExpanded(false);
+    }
     
     // If the view action is EXPAND_PATH, check if this node is part of that subtree
-    // We expand if our path starts with the target path
     if (viewAction.type === 'EXPAND_PATH') {
       if (currentPath.startsWith(viewAction.path)) {
         setIsExpanded(true);
+        if (currentPath === viewAction.path) setIsRecursivelyExpanded(true);
+      }
+    }
+
+    // Handle COLLAPSE_PATH
+    if (viewAction.type === 'COLLAPSE_PATH') {
+      // If we are a descendant of the collapsed path, collapse.
+      if (currentPath.startsWith(viewAction.path) && currentPath !== viewAction.path) {
+        setIsExpanded(false);
+      }
+      
+      // Reset recursive flag if we are involved
+      if (currentPath.startsWith(viewAction.path)) {
+        setIsRecursivelyExpanded(false);
       }
     }
   }, [viewAction, currentPath]);
@@ -262,9 +329,16 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
     setIsExpanded(!isExpanded);
   };
 
-  const handleRecursiveExpand = (e: React.MouseEvent) => {
+  const handleRecursiveToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onExpandPath(currentPath);
+    if (isRecursivelyExpanded) {
+      onCollapsePath(currentPath);
+      setIsRecursivelyExpanded(false);
+    } else {
+      setIsExpanded(true);
+      onExpandPath(currentPath);
+      setIsRecursivelyExpanded(true);
+    }
   };
 
   const handleValueDoubleClick = (e: React.MouseEvent, targetPath: string) => {
@@ -301,14 +375,14 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
           </span>
           <span className="font-bold tracking-wide">{node.name}</span>
           
-          {/* Recursive Expand Button - Only show if has children */}
+          {/* Recursive Expand/Collapse Button - Only show if has children */}
           {hasChildren && (
             <button 
-              onClick={handleRecursiveExpand}
-              className="ml-2 p-0.5 rounded hover:bg-white/20 text-white/70 hover:text-white transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0"
-              title="Expand all children recursively"
+              onClick={handleRecursiveToggle}
+              className={`ml-2 p-0.5 rounded hover:bg-white/20 text-white hover:text-white transition-colors shrink-0 ${isRecursivelyExpanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-70'}`}
+              title={isRecursivelyExpanded ? "Collapse next level" : "Expand all children recursively"}
             >
-              <ChevronsDown size={14} />
+              {isRecursivelyExpanded ? <ChevronsUp size={14} /> : <ChevronsDown size={14} />}
             </button>
           )}
         </div>
@@ -502,6 +576,10 @@ const App: React.FC = () => {
     setViewAction({ type: 'EXPAND_PATH', path, id: Date.now() });
   }, []);
 
+  const handleCollapsePath = useCallback((path: string) => {
+    setViewAction({ type: 'COLLAPSE_PATH', path, id: Date.now() });
+  }, []);
+
   const handleLoadSample = () => {
     setInputXml(SAMPLE_XML);
     const { root } = parseXML(SAMPLE_XML);
@@ -542,7 +620,12 @@ const App: React.FC = () => {
   const handleCollapseAll = () => setViewAction({ type: 'COLLAPSE_ALL', id: Date.now() });
 
   return (
-    <GridContext.Provider value={{ viewAction, onCopyXPath: handleCopyXPath, onExpandPath: handleExpandPath }}>
+    <GridContext.Provider value={{ 
+      viewAction, 
+      onCopyXPath: handleCopyXPath, 
+      onExpandPath: handleExpandPath,
+      onCollapsePath: handleCollapsePath 
+    }}>
       <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-900 overflow-hidden">
         
         {/* Header */}
