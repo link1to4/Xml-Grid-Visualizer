@@ -15,13 +15,14 @@ import {
   CheckCircle2,
   GripHorizontal,
   ChevronsDown,
-  ChevronsUp
+  ChevronsUp,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { parseXML, prettifyXML, SAMPLE_XML } from './utils';
 import { XMLNode, XMLAttribute } from './types';
 
 // --- Context for Global Actions ---
-// Updated to support path-specific expansion and collapse
 type ViewAction = 
   | { type: 'EXPAND_ALL'; id: number } 
   | { type: 'COLLAPSE_ALL'; id: number }
@@ -44,14 +45,6 @@ const GridContext = React.createContext<{
 interface GroupedNodes {
   [tagName: string]: XMLNode[];
 }
-
-// --- Helper for XPath Indexing ---
-const getIndexedPath = (basePath: string, tagName: string, index: number, total: number) => {
-  if (total > 1) {
-    return `${basePath}/${tagName}[${index + 1}]`;
-  }
-  return `${basePath}/${tagName}`;
-};
 
 // --- Custom Logo Component ---
 const AppLogo = () => (
@@ -92,22 +85,17 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
       setIsRecursivelyExpanded(false);
     }
     
-    // Check if this table is inside the target path being expanded recursively
     if (viewAction.type === 'EXPAND_PATH') {
       if (tablePath.startsWith(viewAction.path)) {
         setIsExpanded(true);
-        // If we are the target of the expansion, mark as recursively expanded
         if (tablePath === viewAction.path) setIsRecursivelyExpanded(true);
       }
     }
 
     if (viewAction.type === 'COLLAPSE_PATH') {
-      // If this table is a descendant of the collapsed path, collapse it
       if (tablePath.startsWith(viewAction.path) && tablePath !== viewAction.path) {
         setIsExpanded(false);
       }
-      
-      // If this table is involved in the collapse path (either it is the target or a child), reset recursive state
       if (tablePath.startsWith(viewAction.path)) {
         setIsRecursivelyExpanded(false);
       }
@@ -152,23 +140,23 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
   };
 
   return (
-    <div className="border border-gray-300 shadow-sm m-1 bg-white flex flex-col overflow-hidden w-max">
+    <div className="border border-gray-300 dark:border-slate-600 shadow-sm m-1 bg-white dark:bg-slate-800 flex flex-col overflow-hidden w-max">
       {/* Table Header */}
       <div 
         onClick={toggleExpand}
-        className="bg-gray-100 border-b border-gray-300 px-2 py-1 flex items-center cursor-pointer select-none text-sm hover:bg-gray-200 group"
+        className="bg-gray-100 dark:bg-slate-700 border-b border-gray-300 dark:border-slate-600 px-2 py-1 flex items-center cursor-pointer select-none text-sm hover:bg-gray-200 dark:hover:bg-slate-600 group"
       >
-        <span className="mr-1 text-gray-600">
+        <span className="mr-1 text-gray-600 dark:text-gray-300">
           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </span>
-        <span className="font-bold text-gray-900 tracking-wide">
-          {tagName} <span className="text-gray-500 font-normal">({nodes.length})</span>
+        <span className="font-bold text-gray-900 dark:text-gray-100 tracking-wide">
+          {tagName} <span className="text-gray-500 dark:text-gray-400 font-normal">({nodes.length})</span>
         </span>
         
         {/* Recursive Expand/Collapse Button for Table */}
         <button 
           onClick={handleRecursiveToggle}
-          className={`ml-2 p-0.5 rounded hover:bg-gray-300 text-gray-400 hover:text-gray-700 transition-colors shrink-0 ${isRecursivelyExpanded ? 'opacity-100 text-blue-600' : 'opacity-0 group-hover:opacity-100'}`}
+          className={`ml-2 p-0.5 rounded hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-400 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors shrink-0 ${isRecursivelyExpanded ? 'opacity-100 text-blue-600 dark:text-blue-400' : 'opacity-0 group-hover:opacity-100'}`}
           title={isRecursivelyExpanded ? "Collapse next level" : `Expand all ${tagName} items recursively`}
         >
           {isRecursivelyExpanded ? <ChevronsUp size={14} /> : <ChevronsDown size={14} />}
@@ -177,17 +165,17 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
 
       {/* Table Body */}
       {isExpanded && (
-        <div className="overflow-x-auto custom-scrollbar bg-white">
+        <div className="overflow-x-auto custom-scrollbar bg-white dark:bg-slate-800">
           <table className="border-collapse w-full text-xs text-left">
             <thead>
-              <tr className="bg-white border-b border-gray-200">
+              <tr className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-600">
                 {columns.attributes.map(attr => (
-                  <th key={`head-attr-${attr}`} className="p-2 border-r border-gray-200 font-bold text-amber-800 whitespace-nowrap bg-amber-50">
+                  <th key={`head-attr-${attr}`} className="p-2 border-r border-gray-200 dark:border-slate-600 font-bold text-amber-800 dark:text-amber-300 whitespace-nowrap bg-amber-50 dark:bg-amber-900/30">
                     @{attr}
                   </th>
                 ))}
                 {columns.children.map(child => (
-                  <th key={`head-child-${child}`} className="p-2 border-r border-gray-200 font-bold text-green-800 whitespace-nowrap">
+                  <th key={`head-child-${child}`} className="p-2 border-r border-gray-200 dark:border-slate-600 font-bold text-green-800 dark:text-green-300 whitespace-nowrap">
                     {child}
                   </th>
                 ))}
@@ -198,14 +186,14 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
                 const rowPath = `${parentPath}/${tagName}[${nodeIndex + 1}]`;
 
                 return (
-                  <tr key={node.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                  <tr key={node.id} className="border-b border-gray-100 dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-700/50">
                     {columns.attributes.map(attrKey => {
                       const attr = node.attributes.find(a => a.name === attrKey);
                       const attrPath = `${rowPath}/@${attrKey}`;
                       return (
                         <td 
                           key={`${node.id}-attr-${attrKey}`} 
-                          className="p-2 border-r border-gray-100 align-top text-gray-900 whitespace-nowrap hover:bg-blue-50 cursor-copy"
+                          className="p-2 border-r border-gray-100 dark:border-slate-700 align-top text-gray-900 dark:text-gray-200 whitespace-nowrap hover:bg-blue-50 dark:hover:bg-slate-600 cursor-copy"
                           title={attr ? `XPath: ${attrPath} (Double-click to copy)` : ''}
                           onDoubleClick={(e) => attr && handleValueDoubleClick(e, attrPath)}
                         >
@@ -218,9 +206,9 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
                       const matches = node.children.filter(c => c.name === childKey);
                       
                       return (
-                        <td key={`${node.id}-child-${childKey}`} className="p-1 border-r border-gray-100 align-top min-w-[80px]">
+                        <td key={`${node.id}-child-${childKey}`} className="p-1 border-r border-gray-100 dark:border-slate-700 align-top min-w-[80px]">
                           {matches.length === 0 ? (
-                            <span className="text-gray-300">-</span>
+                            <span className="text-gray-300 dark:text-slate-600">-</span>
                           ) : (
                             <div className="flex flex-col gap-1">
                               {matches.map((match, matchIdx) => {
@@ -234,7 +222,7 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
                                     return (
                                       <div 
                                         key={match.id} 
-                                        className="truncate max-w-[200px] text-gray-900 font-medium hover:bg-blue-50 cursor-copy p-0.5 rounded" 
+                                        className="truncate max-w-[200px] text-gray-900 dark:text-gray-200 font-medium hover:bg-blue-50 dark:hover:bg-slate-600 cursor-copy p-0.5 rounded" 
                                         title={`XPath: ${childPath} (Double-click to copy)\nValue: ${match.content}`}
                                         onDoubleClick={(e) => handleValueDoubleClick(e, childPath)}
                                       >
@@ -292,7 +280,6 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
       setIsRecursivelyExpanded(false);
     }
     
-    // If the view action is EXPAND_PATH, check if this node is part of that subtree
     if (viewAction.type === 'EXPAND_PATH') {
       if (currentPath.startsWith(viewAction.path)) {
         setIsExpanded(true);
@@ -300,14 +287,10 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
       }
     }
 
-    // Handle COLLAPSE_PATH
     if (viewAction.type === 'COLLAPSE_PATH') {
-      // If we are a descendant of the collapsed path, collapse.
       if (currentPath.startsWith(viewAction.path) && currentPath !== viewAction.path) {
         setIsExpanded(false);
       }
-      
-      // Reset recursive flag if we are involved
       if (currentPath.startsWith(viewAction.path)) {
         setIsRecursivelyExpanded(false);
       }
@@ -315,12 +298,12 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
   }, [viewAction, currentPath]);
 
   const headerColors = [
-    'bg-blue-600',
-    'bg-emerald-600',
-    'bg-indigo-600',
-    'bg-pink-600',
-    'bg-amber-600',
-    'bg-slate-600'
+    'bg-blue-600 dark:bg-blue-700',
+    'bg-emerald-600 dark:bg-emerald-700',
+    'bg-indigo-600 dark:bg-indigo-700',
+    'bg-pink-600 dark:bg-pink-700',
+    'bg-amber-600 dark:bg-amber-700',
+    'bg-slate-600 dark:bg-slate-700'
   ];
   const headerColor = headerColors[depth % headerColors.length];
 
@@ -362,7 +345,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
   const hasContent = node.content !== null && node.content !== '';
 
   return (
-    <div className="border border-gray-300 shadow-sm m-1 min-w-[120px] bg-white text-sm overflow-hidden flex flex-col w-max">
+    <div className="border border-gray-300 dark:border-slate-600 shadow-sm m-1 min-w-[120px] bg-white dark:bg-slate-800 text-sm overflow-hidden flex flex-col w-max">
       {/* Node Header */}
       <div 
         onClick={toggleExpand}
@@ -375,7 +358,6 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
           </span>
           <span className="font-bold tracking-wide">{node.name}</span>
           
-          {/* Recursive Expand/Collapse Button - Only show if has children */}
           {hasChildren && (
             <button 
               onClick={handleRecursiveToggle}
@@ -394,16 +376,16 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
           
           {/* Attributes Section */}
           {hasAttributes && (
-            <div className="bg-amber-50 border-b border-gray-200 p-1 overflow-x-auto custom-scrollbar">
+            <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-gray-200 dark:border-slate-600 p-1 overflow-x-auto custom-scrollbar">
               <table className="text-xs">
                 <tbody>
                   {node.attributes.map((attr, idx) => {
                     const attrPath = `${currentPath}/@${attr.name}`;
                     return (
                       <tr key={idx}>
-                        <td className="font-semibold text-amber-800 pr-2 whitespace-nowrap">@{attr.name}:</td>
+                        <td className="font-semibold text-amber-800 dark:text-amber-300 pr-2 whitespace-nowrap">@{attr.name}:</td>
                         <td 
-                          className="text-gray-900 whitespace-nowrap hover:bg-amber-100 cursor-copy px-1 rounded transition-colors"
+                          className="text-gray-900 dark:text-gray-200 whitespace-nowrap hover:bg-amber-100 dark:hover:bg-amber-800/40 cursor-copy px-1 rounded transition-colors"
                           title={`XPath: ${attrPath} (Double-click to copy)`}
                           onDoubleClick={(e) => handleValueDoubleClick(e, attrPath)}
                         >
@@ -424,7 +406,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
               {/* Text Content */}
               {hasContent && (
                 <div 
-                  className="p-2 text-gray-900 font-mono whitespace-nowrap bg-gray-50 border border-gray-100 m-1 min-w-[50px] hover:bg-blue-50 cursor-copy transition-colors"
+                  className="p-2 text-gray-900 dark:text-gray-100 font-mono whitespace-nowrap bg-gray-50 dark:bg-slate-700 border border-gray-100 dark:border-slate-600 m-1 min-w-[50px] hover:bg-blue-50 dark:hover:bg-slate-600 cursor-copy transition-colors"
                   title={`XPath: ${currentPath} (Double-click to copy)`}
                   onDoubleClick={(e) => handleValueDoubleClick(e, currentPath)}
                 >
@@ -463,7 +445,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
               )}
 
               {!hasContent && !hasChildren && !hasAttributes && (
-                <div className="text-gray-400 italic text-xs p-1 px-2 whitespace-nowrap">
+                <div className="text-gray-400 dark:text-slate-500 italic text-xs p-1 px-2 whitespace-nowrap">
                   (empty)
                 </div>
               )}
@@ -484,21 +466,36 @@ const App: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [viewAction, setViewAction] = useState<ViewAction | null>(null);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') === 'dark' || 
+        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    return false;
+  });
 
   // --- Resizable Panel State ---
   const [topPanelHeight, setTopPanelHeight] = useState(35); // Percentage
   const isResizing = useRef(false);
 
+  // --- Dark Mode Logic ---
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
+  const toggleDarkMode = () => setDarkMode(!darkMode);
+
   // --- Resizing Logic ---
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing.current) return;
-      
-      // Calculate percentage based on window height
-      // Subtract header height approximation (e.g. 50px) if strictly needed, but simple ratio works fine here
       const newHeight = (e.clientY / window.innerHeight) * 100;
-      
-      // Limit min/max size (e.g., 10% to 90%)
       if (newHeight > 10 && newHeight < 90) {
         setTopPanelHeight(newHeight);
       }
@@ -530,9 +527,10 @@ const App: React.FC = () => {
     if (error) setError(null);
   };
 
-  const handleParse = useCallback(() => {
+  // Centralized parsing function for button click, paste, and drop
+  const executeParse = useCallback((xmlString: string) => {
     setError(null);
-    const { root, error: parseError } = parseXML(inputXml);
+    const { root, error: parseError } = parseXML(xmlString);
     if (parseError) {
       setError(parseError);
       setParsedData(null);
@@ -540,14 +538,36 @@ const App: React.FC = () => {
       setParsedData(root);
       setViewAction(null);
     }
-  }, [inputXml]);
+  }, []);
+
+  // Update input and parse immediately
+  const processInput = useCallback((content: string) => {
+    setInputXml(content);
+    executeParse(content);
+  }, [executeParse]);
+
+  const handleParseButton = () => {
+    executeParse(inputXml);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    // Get pasted data via clipboard API
+    const pastedData = e.clipboardData.getData('Text');
+    // If it looks like XML, auto submit
+    if (pastedData && pastedData.trim().length > 0) {
+      // We allow the default paste behavior to happen so textarea updates,
+      // but we also trigger the parse.
+      // Small timeout ensures value is set if we used onChange, but here we pass data directly.
+      processInput(pastedData);
+    }
+  };
 
   const handlePrettify = () => {
     try {
       const formatted = prettifyXML(inputXml);
       setInputXml(formatted);
     } catch (e) {
-      handleParse();
+      handleParseButton();
     }
   };
 
@@ -581,11 +601,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleLoadSample = () => {
-    setInputXml(SAMPLE_XML);
-    const { root } = parseXML(SAMPLE_XML);
-    setParsedData(root);
-    setError(null);
-    setViewAction(null);
+    processInput(SAMPLE_XML);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -607,7 +623,8 @@ const App: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          setInputXml(event.target.result as string);
+          const content = event.target.result as string;
+          processInput(content);
         }
       };
       reader.readAsText(file);
@@ -626,16 +643,25 @@ const App: React.FC = () => {
       onExpandPath: handleExpandPath,
       onCollapsePath: handleCollapsePath 
     }}>
-      <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-900 overflow-hidden">
+      <div className="flex flex-col h-screen bg-gray-100 dark:bg-slate-900 font-sans text-gray-900 dark:text-gray-100 overflow-hidden transition-colors duration-200">
         
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm flex items-center justify-between shrink-0 z-10 h-[56px]">
-          <div className="flex items-center space-x-3 text-blue-700">
+        <header className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3 shadow-sm flex items-center justify-between shrink-0 z-10 h-[56px]">
+          <div className="flex items-center space-x-3 text-blue-700 dark:text-blue-400">
             <AppLogo />
             <h1 className="text-xl font-bold tracking-tight">XML Grid Visualizer</h1>
           </div>
-          <div className="text-sm text-gray-500 hidden sm:block">
-            Inspired by xmlgrid.net
+          <div className="flex items-center gap-4">
+             <div className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+              Inspired by xmlgrid.net
+            </div>
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-yellow-400 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
           </div>
         </header>
 
@@ -645,19 +671,19 @@ const App: React.FC = () => {
           {/* Source Editor - Resizable */}
           <section 
             style={{ height: `${topPanelHeight}%` }}
-            className="w-full flex flex-col border-b border-gray-300 bg-white shrink-0 relative min-h-[50px]"
+            className="w-full flex flex-col border-b border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0 relative min-h-[50px]"
           >
-            <div className="bg-gray-100 border-b border-gray-200 p-2 flex flex-wrap gap-2 items-center justify-between shrink-0">
+            <div className="bg-gray-100 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-2 flex flex-wrap gap-2 items-center justify-between shrink-0">
               <div className="flex gap-2">
                 <button 
-                  onClick={handleParse}
+                  onClick={handleParseButton}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded shadow-sm transition-colors"
                 >
                   <Play size={14} /> Submit
                 </button>
                 <button 
                   onClick={handlePrettify}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium rounded shadow-sm transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 text-xs font-medium rounded shadow-sm transition-colors"
                 >
                   <AlignLeft size={14} /> Prettify
                 </button>
@@ -666,20 +692,20 @@ const App: React.FC = () => {
               <div className="flex gap-2">
                 <button 
                   onClick={handleLoadSample}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 text-xs font-medium rounded transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-slate-700 text-xs font-medium rounded transition-colors"
                 >
                   <FileCode size={14} /> Sample
                 </button>
                 <button 
                   onClick={handleCopySource}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-200 text-xs font-medium rounded transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-700 text-xs font-medium rounded transition-colors"
                   title="Copy to Clipboard"
                 >
                   <Copy size={14} /> {isCopied ? 'Copied!' : 'Copy'}
                 </button>
                 <button 
                   onClick={handleClear}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 text-xs font-medium rounded transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-slate-700 text-xs font-medium rounded transition-colors"
                   title="Clear Input"
                 >
                   <Trash2 size={14} />
@@ -698,14 +724,15 @@ const App: React.FC = () => {
                 placeholder="Paste your XML here or drop a file..."
                 value={inputXml}
                 onChange={handleInputChange}
+                onPaste={handlePaste}
                 spellCheck={false}
               />
               
               {isDragging && (
                 <div className="absolute inset-0 bg-blue-500/20 border-2 border-blue-500 border-dashed flex items-center justify-center pointer-events-none z-20 backdrop-blur-sm">
-                  <div className="bg-white p-4 rounded-lg shadow-xl flex items-center gap-3 animate-bounce">
-                    <Upload className="w-6 h-6 text-blue-600" />
-                    <span className="font-semibold text-blue-700">Drop XML File Here</span>
+                  <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-xl flex items-center gap-3 animate-bounce">
+                    <Upload className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">Drop XML File Here</span>
                   </div>
                 </div>
               )}
@@ -724,31 +751,31 @@ const App: React.FC = () => {
 
           {/* Resizer Handle */}
           <div 
-            className="h-2 bg-gray-100 hover:bg-blue-500 cursor-row-resize flex items-center justify-center transition-colors z-20 shrink-0 border-y border-gray-300"
+            className="h-2 bg-gray-100 dark:bg-slate-700 hover:bg-blue-500 cursor-row-resize flex items-center justify-center transition-colors z-20 shrink-0 border-y border-gray-300 dark:border-slate-600"
             onMouseDown={startResizing}
             title="Drag to resize"
           >
-             <GripHorizontal className="w-8 h-4 text-gray-400 opacity-50 pointer-events-none" />
+             <GripHorizontal className="w-8 h-4 text-gray-400 dark:text-gray-500 opacity-50 pointer-events-none" />
           </div>
 
           {/* Grid View - Takes remaining space */}
-          <section className="flex-1 bg-gray-100 overflow-hidden flex flex-col relative min-h-[50px]">
+          <section className="flex-1 bg-gray-100 dark:bg-slate-900 overflow-hidden flex flex-col relative min-h-[50px]">
             
-            <div className="bg-gray-50 border-b border-gray-200 p-2 px-4 flex items-center justify-between shrink-0">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <div className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-2 px-4 flex items-center justify-between shrink-0">
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Grid View
               </span>
               <div className="flex gap-2">
                 <button 
                   onClick={handleExpandAll}
-                  className="flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-600 text-xs rounded shadow-sm transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 text-xs rounded shadow-sm transition-colors"
                   title="Expand All Nodes"
                 >
                   <Maximize2 size={12} /> Expand All
                 </button>
                 <button 
                   onClick={handleCollapseAll}
-                  className="flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-600 text-xs rounded shadow-sm transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 text-xs rounded shadow-sm transition-colors"
                   title="Collapse All Nodes"
                 >
                   <Minimize2 size={12} /> Collapse All
@@ -762,7 +789,7 @@ const App: React.FC = () => {
                   <GridNode node={parsedData} depth={0} />
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-slate-600">
                   <Code className="w-16 h-16 mb-4 opacity-20" />
                   <p className="text-sm font-medium">No valid XML data to display</p>
                   <p className="text-xs mt-1">Paste XML above, drag & drop a file, or click "Sample"</p>
@@ -771,7 +798,7 @@ const App: React.FC = () => {
 
               {/* Toast Notification for XPath Copy */}
               {toastMessage && (
-                <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 z-50 animate-fade-in-up text-sm">
+                <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800 dark:bg-slate-700 text-white dark:text-gray-100 px-4 py-2 rounded-full shadow-xl flex items-center gap-2 z-50 animate-fade-in-up text-sm">
                   <CheckCircle2 size={16} className="text-green-400" />
                   <span>{toastMessage}</span>
                 </div>
