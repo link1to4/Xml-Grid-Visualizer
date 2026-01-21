@@ -68,8 +68,8 @@ export const parseXML = (xmlString: string): ParseResult => {
     // Smart Unwrapping:
     // If the wrapper has only one child element and no text/attributes (standard valid XML), return that child.
     if (
-      convertedWrapper.children.length === 1 && 
-      (!convertedWrapper.content) && 
+      convertedWrapper.children.length === 1 &&
+      (!convertedWrapper.content) &&
       convertedWrapper.attributes.length === 0
     ) {
       return { root: convertedWrapper.children[0], error: null };
@@ -84,19 +84,96 @@ export const parseXML = (xmlString: string): ParseResult => {
   }
 };
 
+
+const escapeXML = (str: string): string => {
+  return str.replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+};
+
+const serializeXML = (node: XMLNode, level: number = 0): string => {
+  const indent = '  '.repeat(level);
+  let xml = `${indent}<${node.name}`;
+
+  if (node.attributes.length > 0) {
+    node.attributes.forEach(attr => {
+      xml += ` ${attr.name}="${escapeXML(attr.value)}"`;
+    });
+  }
+
+  const hasChildren = node.children.length > 0;
+  const hasContent = node.content !== null && node.content.length > 0;
+
+  if (!hasChildren && !hasContent) {
+    xml += '/>';
+    return xml;
+  }
+
+  xml += '>';
+
+  if (hasContent) {
+    xml += escapeXML(node.content!);
+  }
+
+  if (hasChildren) {
+    xml += '\r\n';
+    node.children.forEach(child => {
+      xml += serializeXML(child, level + 1) + '\r\n';
+    });
+    xml += indent;
+  }
+
+  xml += `</${node.name}>`;
+  return xml;
+};
+
 export const prettifyXML = (xml: string): string => {
-  let formatted = '';
-  let indent = '';
-  const tab = '  '; // 2 spaces indentation
-  
-  // Simple regex-based formatter
-  xml.split(/>\s*</).forEach(function(node) {
-      if (node.match( /^\/\w/ )) indent = indent.substring(tab.length); 
-      formatted += indent + '<' + node + '>\r\n';
-      if (node.match( /^<?\w[^>]*[^\/]$/ )) indent += tab;              
-  });
-  
-  return formatted.substring(1, formatted.length-3);
+  const { root, error } = parseXML(xml);
+  if (error || !root) {
+    return xml; // Fallback to original if parsing fails
+  }
+
+  // Check for XML declaration in the original string
+  const declarationMatch = xml.match(/^\s*<\?xml[^>]*\?>/i);
+  let result = '';
+
+  if (declarationMatch) {
+    result += declarationMatch[0] + '\r\n';
+  } else {
+    // Optional: Add default declaration if none exists? 
+    // For now, let's only preserve if it was there to avoid forcing it on fragments.
+    // Actually, user's example had it.
+  }
+
+  // If the parsed root was a wrapper for a fragment, we might want to unwrap?
+  // parseXML logic: "If ... return { root: convertedWrapper.children[0] }" -> singular root
+  // "Else ... convertedWrapper.name = "root"; return { root: convertedWrapper }" -> fragment wrapper
+
+  // If parseXML returned a generated "root" wrapper that wasn't in original (implicit),
+  // we might be indenting everything under it.
+  // The current parseXML logic tries to be smart:
+  // if 1 child -> returns that child as root.
+  // if multiple -> returns wrapper named "root".
+
+  // If we have a wrapper named "root" that WAS generated (how do we know?), 
+  // we might want to serialize its CHILDREN instead of the root itself?
+  // `parseXML` doesn't explicitly flag "generated". 
+  // But standard XML has 1 root. 
+  // If `parseXML` returns a node named "root" with ID generated, check if input had <root>?
+  // Actually, valid XML 1.0 has exactly one root element. 
+  // If the user pasted a fragment (multiple top levels), `parseXML` wrapped it in `<root>`.
+  // If we serialize `<root>...</root>`, we change the content by adding a container.
+  // But `prettify` usually assumes a document.
+  // Let's stick to simple serialization of the Result Root. 
+  // If the user provided a fragment, they get it wrapped in a root, which makes it valid XML.
+  // Wait, if I paste `<a>...</a><b>...</b>`, parseXML returns `<root><a>...</a><b>...</b></root>`.
+  // Prettify will output `<root>...`. That seems acceptable for "Visualizer". 
+  // But for "Prettify" text transformation... maybe less so.
+  // But strictly, `<a></a><b></b>` is invalid XML document.
+
+  return result + serializeXML(root);
 };
 
 export const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
