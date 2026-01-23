@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useEffect, useMemo, useContext, useRef } from 'react';
-import { 
-  FileCode, 
-  Play, 
-  Copy, 
-  Trash2, 
-  AlignLeft, 
-  ChevronRight, 
-  ChevronDown, 
+import {
+  FileCode,
+  Play,
+  Copy,
+  Trash2,
+  AlignLeft,
+  ChevronRight,
+  ChevronDown,
   AlertCircle,
   Code,
   Upload,
@@ -23,8 +23,8 @@ import { parseXML, prettifyXML, SAMPLE_XML } from './utils';
 import { XMLNode, XMLAttribute } from './types';
 
 // --- Context for Global Actions ---
-type ViewAction = 
-  | { type: 'EXPAND_ALL'; id: number } 
+type ViewAction =
+  | { type: 'EXPAND_ALL'; id: number }
   | { type: 'COLLAPSE_ALL'; id: number }
   | { type: 'EXPAND_PATH'; path: string; id: number }
   | { type: 'COLLAPSE_PATH'; path: string; id: number };
@@ -36,9 +36,9 @@ const GridContext = React.createContext<{
   onCollapsePath: (path: string) => void;
 }>({
   viewAction: null,
-  onCopyXPath: () => {},
-  onExpandPath: () => {},
-  onCollapsePath: () => {},
+  onCopyXPath: () => { },
+  onExpandPath: () => { },
+  onCollapsePath: () => { },
 });
 
 // --- Helper Types for Grouping ---
@@ -49,7 +49,7 @@ interface GroupedNodes {
 // --- Custom Logo Component ---
 const AppLogo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className="w-8 h-8 shrink-0">
-    <rect x="0" y="0" width="64" height="64" rx="12" fill="#005b96"/>
+    <rect x="0" y="0" width="64" height="64" rx="12" fill="#005b96" />
     <text x="50%" y="53%" fontFamily="monospace" fontWeight="bold" fontSize="36" fill="white" textAnchor="middle" dominantBaseline="central">&lt;/&gt;</text>
   </svg>
 );
@@ -65,11 +65,11 @@ interface NodeTableProps {
 const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth }) => {
   const { viewAction, onCopyXPath, onExpandPath, onCollapsePath } = useContext(GridContext);
   const tablePath = `${parentPath}/${tagName}`;
-  
+
   const [isExpanded, setIsExpanded] = useState(() => {
     if (viewAction?.type === 'COLLAPSE_ALL') return false;
     if (viewAction?.type === 'EXPAND_ALL') return true;
-    return depth < 1; 
+    return depth < 1;
   });
 
   const [isRecursivelyExpanded, setIsRecursivelyExpanded] = useState(false);
@@ -84,7 +84,7 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
       setIsExpanded(false);
       setIsRecursivelyExpanded(false);
     }
-    
+
     if (viewAction.type === 'EXPAND_PATH') {
       if (tablePath.startsWith(viewAction.path)) {
         setIsExpanded(true);
@@ -142,7 +142,7 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
   return (
     <div className="border border-gray-300 dark:border-slate-600 shadow-sm m-1 bg-white dark:bg-slate-800 flex flex-col overflow-hidden w-max">
       {/* Table Header */}
-      <div 
+      <div
         onClick={toggleExpand}
         className="bg-gray-100 dark:bg-slate-700 border-b border-gray-300 dark:border-slate-600 px-2 py-1 flex items-center cursor-pointer select-none text-sm hover:bg-gray-200 dark:hover:bg-slate-600 group"
       >
@@ -152,9 +152,9 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
         <span className="font-bold text-gray-900 dark:text-gray-100 tracking-wide">
           {tagName} <span className="text-gray-500 dark:text-gray-400 font-normal">({nodes.length})</span>
         </span>
-        
+
         {/* Recursive Expand/Collapse Button for Table */}
-        <button 
+        <button
           onClick={handleRecursiveToggle}
           className={`ml-2 p-0.5 rounded hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-400 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors shrink-0 ${isRecursivelyExpanded ? 'opacity-100 text-blue-600 dark:text-blue-400' : 'opacity-0 group-hover:opacity-100'}`}
           title={isRecursivelyExpanded ? "Collapse next level" : `Expand all ${tagName} items recursively`}
@@ -191,8 +191,8 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
                       const attr = node.attributes.find(a => a.name === attrKey);
                       const attrPath = `${rowPath}/@${attrKey}`;
                       return (
-                        <td 
-                          key={`${node.id}-attr-${attrKey}`} 
+                        <td
+                          key={`${node.id}-attr-${attrKey}`}
                           className="p-2 border-r border-gray-100 dark:border-slate-700 align-top text-gray-900 dark:text-gray-200 whitespace-nowrap hover:bg-blue-50 dark:hover:bg-slate-600 cursor-copy"
                           title={attr ? `XPath: ${attrPath} (Double-click to copy)` : ''}
                           onDoubleClick={(e) => attr && handleValueDoubleClick(e, attrPath)}
@@ -201,10 +201,10 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
                         </td>
                       );
                     })}
-                    
+
                     {columns.children.map(childKey => {
                       const matches = node.children.filter(c => c.name === childKey);
-                      
+
                       return (
                         <td key={`${node.id}-child-${childKey}`} className="p-1 border-r border-gray-100 dark:border-slate-700 align-top min-w-[80px]">
                           {matches.length === 0 ? (
@@ -212,26 +212,26 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
                           ) : (
                             <div className="flex flex-col gap-1">
                               {matches.map((match, matchIdx) => {
-                                  const isLeaf = match.children.length === 0 && match.attributes.length === 0 && match.content !== null;
-                                  
-                                  const childPath = matches.length > 1 
-                                    ? `${rowPath}/${childKey}[${matchIdx + 1}]` 
-                                    : `${rowPath}/${childKey}`;
+                                const isLeaf = match.children.length === 0 && match.attributes.length === 0 && match.content !== null;
 
-                                  if (isLeaf) {
-                                    return (
-                                      <div 
-                                        key={match.id} 
-                                        className="truncate max-w-[200px] text-gray-900 dark:text-gray-200 font-medium hover:bg-blue-50 dark:hover:bg-slate-600 cursor-copy p-0.5 rounded" 
-                                        title={`XPath: ${childPath} (Double-click to copy)\nValue: ${match.content}`}
-                                        onDoubleClick={(e) => handleValueDoubleClick(e, childPath)}
-                                      >
-                                        {match.content}
-                                      </div>
-                                    );
-                                  } else {
-                                    return <GridNode key={match.id} node={match} depth={0} path={childPath} />;
-                                  }
+                                const childPath = matches.length > 1
+                                  ? `${rowPath}/${childKey}[${matchIdx + 1}]`
+                                  : `${rowPath}/${childKey}`;
+
+                                if (isLeaf) {
+                                  return (
+                                    <div
+                                      key={match.id}
+                                      className="truncate max-w-[200px] text-gray-900 dark:text-gray-200 font-medium hover:bg-blue-50 dark:hover:bg-slate-600 cursor-copy p-0.5 rounded"
+                                      title={`XPath: ${childPath} (Double-click to copy)\nValue: ${match.content}`}
+                                      onDoubleClick={(e) => handleValueDoubleClick(e, childPath)}
+                                    >
+                                      {match.content}
+                                    </div>
+                                  );
+                                } else {
+                                  return <GridNode key={match.id} node={match} depth={0} path={childPath} />;
+                                }
                               })}
                             </div>
                           )}
@@ -258,7 +258,7 @@ interface GridNodeProps {
 
 const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
   const { viewAction, onCopyXPath, onExpandPath, onCollapsePath } = useContext(GridContext);
-  
+
   const currentPath = path || `/${node.name}`;
 
   const [isExpanded, setIsExpanded] = useState(() => {
@@ -279,7 +279,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
       setIsExpanded(false);
       setIsRecursivelyExpanded(false);
     }
-    
+
     if (viewAction.type === 'EXPAND_PATH') {
       if (currentPath.startsWith(viewAction.path)) {
         setIsExpanded(true);
@@ -347,7 +347,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
   return (
     <div className="border border-gray-300 dark:border-slate-600 shadow-sm m-1 min-w-[120px] bg-white dark:bg-slate-800 text-sm overflow-hidden flex flex-col w-max">
       {/* Node Header */}
-      <div 
+      <div
         onClick={toggleExpand}
         className={`${headerColor} text-white px-2 py-1 flex items-center cursor-pointer select-none overflow-hidden group`}
         title={`XPath: ${currentPath}`}
@@ -357,9 +357,9 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </span>
           <span className="font-bold tracking-wide">{node.name}</span>
-          
+
           {hasChildren && (
-            <button 
+            <button
               onClick={handleRecursiveToggle}
               className={`ml-2 p-0.5 rounded hover:bg-white/20 text-white hover:text-white transition-colors shrink-0 ${isRecursivelyExpanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-70'}`}
               title={isRecursivelyExpanded ? "Collapse next level" : "Expand all children recursively"}
@@ -373,7 +373,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
       {/* Node Body */}
       {isExpanded && (
         <div className="flex flex-col">
-          
+
           {/* Attributes Section */}
           {hasAttributes && (
             <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-gray-200 dark:border-slate-600 p-1 overflow-x-auto custom-scrollbar">
@@ -384,7 +384,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
                     return (
                       <tr key={idx}>
                         <td className="font-semibold text-amber-800 dark:text-amber-300 pr-2 whitespace-nowrap">@{attr.name}:</td>
-                        <td 
+                        <td
                           className="text-gray-900 dark:text-gray-200 whitespace-nowrap hover:bg-amber-100 dark:hover:bg-amber-800/40 cursor-copy px-1 rounded transition-colors"
                           title={`XPath: ${attrPath} (Double-click to copy)`}
                           onDoubleClick={(e) => handleValueDoubleClick(e, attrPath)}
@@ -402,10 +402,10 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
           {/* Children & Content Section */}
           <div className="p-1 overflow-x-auto custom-scrollbar">
             <div className="flex flex-col gap-1 w-max items-start">
-              
+
               {/* Text Content */}
               {hasContent && (
-                <div 
+                <div
                   className="p-2 text-gray-900 dark:text-gray-100 font-mono whitespace-nowrap bg-gray-50 dark:bg-slate-700 border border-gray-100 dark:border-slate-600 m-1 min-w-[50px] hover:bg-blue-50 dark:hover:bg-slate-600 cursor-copy transition-colors"
                   title={`XPath: ${currentPath} (Double-click to copy)`}
                   onDoubleClick={(e) => handleValueDoubleClick(e, currentPath)}
@@ -419,25 +419,25 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
                 <div className="flex flex-col gap-1 w-max">
                   {Object.keys(groupedChildren).map(tagName => {
                     const group = groupedChildren[tagName];
-                    
+
                     if (group.length > 1) {
                       return (
-                        <NodeTable 
-                          key={`group-${tagName}`} 
-                          nodes={group} 
-                          tagName={tagName} 
+                        <NodeTable
+                          key={`group-${tagName}`}
+                          nodes={group}
+                          tagName={tagName}
                           parentPath={currentPath}
                           depth={depth + 1}
                         />
                       );
                     }
-                    
+
                     return (
-                      <GridNode 
-                        key={group[0].id} 
-                        node={group[0]} 
-                        depth={depth + 1} 
-                        path={`${currentPath}/${tagName}`} 
+                      <GridNode
+                        key={group[0].id}
+                        node={group[0]}
+                        depth={depth + 1}
+                        path={`${currentPath}/${tagName}`}
                       />
                     );
                   })}
@@ -468,7 +468,7 @@ const App: React.FC = () => {
   const [viewAction, setViewAction] = useState<ViewAction | null>(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' || 
+      return localStorage.getItem('theme') === 'dark' ||
         (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
     }
     return false;
@@ -555,10 +555,23 @@ const App: React.FC = () => {
     const pastedData = e.clipboardData.getData('Text');
     // If it looks like XML, auto submit
     if (pastedData && pastedData.trim().length > 0) {
-      // We allow the default paste behavior to happen so textarea updates,
-      // but we also trigger the parse.
-      // Small timeout ensures value is set if we used onChange, but here we pass data directly.
-      processInput(pastedData);
+      e.preventDefault(); // Prevent default browser paste to avoid duplication/race conditions
+
+      const textarea = e.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+
+      const newValue = inputXml.substring(0, start) + pastedData + inputXml.substring(end);
+
+      processInput(newValue);
+
+      // Attempt to restore cursor position (next render will handle value update)
+      // We can't easily sync cursor without layout effect, but correct data is priority.
+      setTimeout(() => {
+        if (textarea) {
+          textarea.setSelectionRange(start + pastedData.length, start + pastedData.length);
+        }
+      }, 0);
     }
   };
 
@@ -591,7 +604,7 @@ const App: React.FC = () => {
       setTimeout(() => setToastMessage(null), 3000);
     });
   }, []);
-  
+
   const handleExpandPath = useCallback((path: string) => {
     setViewAction({ type: 'EXPAND_PATH', path, id: Date.now() });
   }, []);
@@ -617,7 +630,7 @@ const App: React.FC = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const file = e.dataTransfer.files[0];
     if (file && (file.type === "text/xml" || file.name.endsWith(".xml") || file.type === "text/plain")) {
       const reader = new FileReader();
@@ -637,14 +650,14 @@ const App: React.FC = () => {
   const handleCollapseAll = () => setViewAction({ type: 'COLLAPSE_ALL', id: Date.now() });
 
   return (
-    <GridContext.Provider value={{ 
-      viewAction, 
-      onCopyXPath: handleCopyXPath, 
+    <GridContext.Provider value={{
+      viewAction,
+      onCopyXPath: handleCopyXPath,
       onExpandPath: handleExpandPath,
-      onCollapsePath: handleCollapsePath 
+      onCollapsePath: handleCollapsePath
     }}>
       <div className="flex flex-col h-screen bg-gray-100 dark:bg-slate-900 font-sans text-gray-900 dark:text-gray-100 overflow-hidden transition-colors duration-200">
-        
+
         {/* Header */}
         <header className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3 shadow-sm flex items-center justify-between shrink-0 z-10 h-[56px]">
           <div className="flex items-center space-x-3 text-blue-700 dark:text-blue-400">
@@ -652,7 +665,7 @@ const App: React.FC = () => {
             <h1 className="text-xl font-bold tracking-tight">XML Grid Visualizer</h1>
           </div>
           <div className="flex items-center gap-4">
-             <div className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+            <div className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
               Inspired by xmlgrid.net
             </div>
             <button
@@ -667,43 +680,43 @@ const App: React.FC = () => {
 
         {/* Main Content Split */}
         <main className="flex-1 flex flex-col overflow-hidden relative">
-          
+
           {/* Source Editor - Resizable */}
-          <section 
+          <section
             style={{ height: `${topPanelHeight}%` }}
             className="w-full flex flex-col border-b border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0 relative min-h-[50px]"
           >
             <div className="bg-gray-100 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-2 flex flex-wrap gap-2 items-center justify-between shrink-0">
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={handleParseButton}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded shadow-sm transition-colors"
                 >
                   <Play size={14} /> Submit
                 </button>
-                <button 
+                <button
                   onClick={handlePrettify}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 text-xs font-medium rounded shadow-sm transition-colors"
                 >
                   <AlignLeft size={14} /> Prettify
                 </button>
               </div>
-              
+
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={handleLoadSample}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-slate-700 text-xs font-medium rounded transition-colors"
                 >
                   <FileCode size={14} /> Sample
                 </button>
-                <button 
+                <button
                   onClick={handleCopySource}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-700 text-xs font-medium rounded transition-colors"
                   title="Copy to Clipboard"
                 >
                   <Copy size={14} /> {isCopied ? 'Copied!' : 'Copy'}
                 </button>
-                <button 
+                <button
                   onClick={handleClear}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-slate-700 text-xs font-medium rounded transition-colors"
                   title="Clear Input"
@@ -713,7 +726,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div 
+            <div
               className="flex-1 relative overflow-hidden"
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -727,7 +740,7 @@ const App: React.FC = () => {
                 onPaste={handlePaste}
                 spellCheck={false}
               />
-              
+
               {isDragging && (
                 <div className="absolute inset-0 bg-blue-500/20 border-2 border-blue-500 border-dashed flex items-center justify-center pointer-events-none z-20 backdrop-blur-sm">
                   <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-xl flex items-center gap-3 animate-bounce">
@@ -750,30 +763,30 @@ const App: React.FC = () => {
           </section>
 
           {/* Resizer Handle */}
-          <div 
+          <div
             className="h-2 bg-gray-100 dark:bg-slate-700 hover:bg-blue-500 cursor-row-resize flex items-center justify-center transition-colors z-20 shrink-0 border-y border-gray-300 dark:border-slate-600"
             onMouseDown={startResizing}
             title="Drag to resize"
           >
-             <GripHorizontal className="w-8 h-4 text-gray-400 dark:text-gray-500 opacity-50 pointer-events-none" />
+            <GripHorizontal className="w-8 h-4 text-gray-400 dark:text-gray-500 opacity-50 pointer-events-none" />
           </div>
 
           {/* Grid View - Takes remaining space */}
           <section className="flex-1 bg-gray-100 dark:bg-slate-900 overflow-hidden flex flex-col relative min-h-[50px]">
-            
+
             <div className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-2 px-4 flex items-center justify-between shrink-0">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Grid View
               </span>
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={handleExpandAll}
                   className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 text-xs rounded shadow-sm transition-colors"
                   title="Expand All Nodes"
                 >
                   <Maximize2 size={12} /> Expand All
                 </button>
-                <button 
+                <button
                   onClick={handleCollapseAll}
                   className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 text-xs rounded shadow-sm transition-colors"
                   title="Collapse All Nodes"
