@@ -1,12 +1,12 @@
 {
-  "name": "xml-grid-visualizer",
+  "name": "xml-grid-visualizer"，
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "tsc && vite build && cp 7B1_MS_V01_00_WorkInProcessNotification.md dist/"
+    "build": "tsc && vite build && cp 7B1_MS_V01_00_WorkInProcessNotification.md dist/",
     "preview": "vite preview"
   },
   "dependencies": {
