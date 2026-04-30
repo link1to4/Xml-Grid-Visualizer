@@ -3,9 +3,17 @@ import { XMLNode, XMLAttribute, ParseResult } from './types';
 // Generate a unique ID for React keys
 const generateId = (): string => Math.random().toString(36).substr(2, 9);
 
+export const getDoctypeFile = (xmlString: string): string | null => {
+  const doctypeMatch = xmlString.match(/<!DOCTYPE\s+\w+\s+SYSTEM\s+"([^"]+)"\s*>/i);
+  if (doctypeMatch && doctypeMatch[1]) {
+    return doctypeMatch[1].replace('.dtd', '.md');
+  }
+  return null;
+};
+
 export const parseXML = (xmlString: string): ParseResult => {
   if (!xmlString || xmlString.trim() === '') {
-    return { root: null, error: null };
+    return { root: null, error: null, doctypeFile: null };
   }
 
   // Remove XML declaration (<?xml ... ?>) if present.
@@ -26,7 +34,7 @@ export const parseXML = (xmlString: string): ParseResult => {
 
   const errorNode = doc.querySelector("parsererror");
   if (errorNode) {
-    return { root: null, error: "Invalid XML: " + errorNode.textContent };
+    return { root: null, error: "Invalid XML: " + errorNode.textContent, doctypeFile: null };
   }
 
   const convertNode = (domNode: Element): XMLNode => {
@@ -72,15 +80,17 @@ export const parseXML = (xmlString: string): ParseResult => {
       (!convertedWrapper.content) &&
       convertedWrapper.attributes.length === 0
     ) {
-      return { root: convertedWrapper.children[0], error: null };
+      const doctypeFile = getDoctypeFile(xmlString);
+      return { root: convertedWrapper.children[0], error: null, doctypeFile };
     }
 
     // If it's a fragment (multiple roots), return the wrapper but rename it to 'root' or 'Document'
     convertedWrapper.name = "root";
-    return { root: convertedWrapper, error: null };
+    const doctypeFile = getDoctypeFile(xmlString);
+    return { root: convertedWrapper, error: null, doctypeFile };
 
   } catch (e: any) {
-    return { root: null, error: "Parsing error: " + e.message };
+    return { root: null, error: "Parsing error: " + e.message, doctypeFile: null };
   }
 };
 
@@ -197,3 +207,40 @@ export const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
     <price>39.95</price>
   </book>
 </bookstore>`;
+
+export const parseMDMapping = (mdContent: string): Map<string, string> => {
+  console.log('[Debug] parseMDMapping called');
+  const mapping = new Map<string, string>();
+  const lines = mdContent.split('\n');
+  
+  // Regex to match table rows: | Sequence | Occurrence | Name | XPath |
+  const rowRegex = /^\|\s*(\d+)\s*\|\s*[^|]*\|\s*[^|]*\|\s*([^|]+)\s*\|/;
+  
+  lines.forEach((line, idx) => {
+    const match = line.match(rowRegex);
+    if (match) {
+      const sequence = match[1].trim();
+      // Remove backticks if present
+      const xpath = match[2].trim().replace(/^`|`$/g, '');
+      // Store normalized version (without /Choice) to make matching easier
+      const normalizedMDXPath = xpath.replace(/\/Choice\//g, '/');
+      mapping.set(normalizedMDXPath, sequence);
+    }
+  });
+  console.log(`[Debug] Parsed ${mapping.size} entries from MD mapping`);
+  return mapping;
+};
+
+export const normalizeXPath = (xpath: string): string => {
+  return xpath.replace(/\[\d+\]/g, '');
+};
+
+export const getSequenceNumber = (xpath: string, mapping: Map<string, string>): string | null => {
+  const normalized = normalizeXPath(xpath);
+  
+  if (mapping.has(normalized)) {
+    return mapping.get(normalized) || null;
+  }
+  
+  return null;
+};
