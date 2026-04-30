@@ -19,7 +19,7 @@ import {
   Moon,
   Sun
 } from 'lucide-react';
-import { parseXML, prettifyXML, SAMPLE_XML } from './utils';
+import { parseXML, prettifyXML, SAMPLE_XML, parseMDMapping, getSequenceNumber } from './utils';
 import { XMLNode, XMLAttribute } from './types';
 
 // --- Context for Global Actions ---
@@ -62,7 +62,15 @@ interface NodeTableProps {
   depth: number;
 }
 
-const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth }) => {
+interface NodeTableProps {
+  nodes: XMLNode[];
+  tagName: string;
+  parentPath: string;
+  depth: number;
+  mdMapping?: Map<string, string>;
+}
+
+const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth, mdMapping }) => {
   const { viewAction, onCopyXPath, onExpandPath, onCollapsePath } = useContext(GridContext);
   const tablePath = `${parentPath}/${tagName}`;
 
@@ -150,7 +158,15 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </span>
         <span className="font-bold text-gray-900 dark:text-gray-100 tracking-wide">
-          {tagName} <span className="text-gray-500 dark:text-gray-400 font-normal">({nodes.length})</span>
+          {(() => {
+            const seq = mdMapping ? getSequenceNumber(`${parentPath}/${tagName}`, mdMapping) : null;
+            return (
+              <>
+                {tagName} {seq && <span className="text-blue-600 dark:text-blue-400 font-mono text-xs ml-1">[{seq}]</span>}
+                <span className="text-gray-500 dark:text-gray-400 font-normal ml-1">({nodes.length})</span>
+              </>
+            );
+          })()}
         </span>
 
         {/* Recursive Expand/Collapse Button for Table */}
@@ -230,7 +246,7 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, tagName, parentPath, depth
                                     </div>
                                   );
                                 } else {
-                                  return <GridNode key={match.id} node={match} depth={0} path={childPath} />;
+                                  return <GridNode key={match.id} node={match} depth={0} path={childPath} mdMapping={mdMapping} />;
                                 }
                               })}
                             </div>
@@ -254,9 +270,10 @@ interface GridNodeProps {
   node: XMLNode;
   depth: number;
   path?: string;
+  mdMapping?: Map<string, string>;
 }
 
-const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
+const GridNode: React.FC<GridNodeProps> = ({ node, depth, path, mdMapping }) => {
   const { viewAction, onCopyXPath, onExpandPath, onCollapsePath } = useContext(GridContext);
 
   const currentPath = path || `/${node.name}`;
@@ -356,7 +373,13 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
           <span className="mr-1">
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </span>
-          <span className="font-bold tracking-wide">{node.name}</span>
+          <span className="font-bold tracking-wide">
+            {node.name} {currentPath && mdMapping && getSequenceNumber(currentPath, mdMapping) && (
+              <span className="text-blue-200 font-mono text-xs ml-1">
+                [{getSequenceNumber(currentPath, mdMapping)}]
+              </span>
+            )}
+          </span>
 
           {hasChildren && (
             <button
@@ -428,6 +451,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
                           tagName={tagName}
                           parentPath={currentPath}
                           depth={depth + 1}
+                          mdMapping={mdMapping}
                         />
                       );
                     }
@@ -438,6 +462,7 @@ const GridNode: React.FC<GridNodeProps> = ({ node, depth, path }) => {
                         node={group[0]}
                         depth={depth + 1}
                         path={`${currentPath}/${tagName}`}
+                        mdMapping={mdMapping}
                       />
                     );
                   })}
@@ -466,6 +491,7 @@ const App: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [viewAction, setViewAction] = useState<ViewAction | null>(null);
+  const [mdMapping, setMdMapping] = useState<Map<string, string> | null>(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' ||
@@ -528,15 +554,35 @@ const App: React.FC = () => {
   };
 
   // Centralized parsing function for button click, paste, and drop
-  const executeParse = useCallback((xmlString: string) => {
+  const executeParse = useCallback(async (xmlString: string) => {
     setError(null);
-    const { root, error: parseError } = parseXML(xmlString);
+    const { root, error: parseError, doctypeFile } = parseXML(xmlString);
+    
     if (parseError) {
       setError(parseError);
       setParsedData(null);
+      setMdMapping(null);
     } else {
       setParsedData(root);
       setViewAction(null);
+      
+      if (doctypeFile) {
+        try {
+          const response = await fetch(`/${doctypeFile}`);
+          if (response.ok) {
+            const text = await response.text();
+            setMdMapping(parseMDMapping(text));
+          } else {
+            console.error(`Failed to load MD file: ${doctypeFile}`);
+            setMdMapping(null);
+          }
+        } catch (e) {
+          console.error(`Error fetching MD file: ${doctypeFile}`, e);
+          setMdMapping(null);
+        }
+      } else {
+        setMdMapping(null);
+      }
     }
   }, []);
 
@@ -799,7 +845,7 @@ const App: React.FC = () => {
             <div className="flex-1 overflow-auto p-4 custom-scrollbar relative">
               {parsedData ? (
                 <div className="inline-block pb-10">
-                  <GridNode node={parsedData} depth={0} />
+                  <GridNode node={parsedData} depth={0} mdMapping={mdMapping || undefined} />
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-slate-600">
