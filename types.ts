@@ -14,4 +14,5 @@ export interface XMLNode {
 export interface ParseResult {
   root: XMLNode | null;
   error: string | null;
+  doctypeFile: string | null;
 }
